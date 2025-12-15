@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rent Car App</title>
+    
+    <!-- Подключение Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Подключение Tailwind CSS (для стилей) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Подключение React и Babel (чтобы писать на React прямо в браузере без сборки) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Иконки Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Убираем скроллбары и настраиваем цвета под тему Телеграма */
+        body {
+            background-color: var(--tg-theme-bg-color, #f9fafb);
+            color: var(--tg-theme-text-color, #000000);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        /* Анимации */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Раскрыть на весь экран
+
+        // --- ДАННЫЕ ---
+        const CARS = [
+            { id: 1, name: 'Tesla Model 3', price: 4500, img: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=600' },
+            { id: 2, name: 'BMW 5 Series', price: 5200, img: 'https://images.unsplash.com/photo-1555215695-3004980adade?w=600' },
+            { id: 3, name: 'Kia Rio X', price: 2100, img: 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=600' }
+        ];
+
+        // --- КОМПОНЕНТЫ ---
+        
+        function App() {
+            const [view, setView] = React.useState('list');
+            const [selectedCar, setSelectedCar] = React.useState(null);
+
+            // Обработка главной кнопки (MainButton)
+            React.useEffect(() => {
+                if (view === 'details' && selectedCar) {
+                    tg.MainButton.setText(`ОПЛАТИТЬ ${selectedCar.price} ₽`);
+                    tg.MainButton.show();
+                    
+                    // Назначаем действие на клик
+                    tg.MainButton.onClick(() => {
+                        tg.showPopup({
+                            title: 'Бронирование',
+                            message: `Вы уверены, что хотите забронировать ${selectedCar.name}?`,
+                            buttons: [{type: 'ok', text: 'Да'}, {type: 'cancel', text: 'Нет'}]
+                        }, (btnId) => {
+                            if (btnId === 'ok') {
+                                tg.close(); // Закрываем приложение
+                            }
+                        });
+                    });
+                } else {
+                    tg.MainButton.hide();
+                }
+
+                // Очистка при размонтировании
+                return () => {
+                    tg.MainButton.offClick();
+                };
+            }, [view, selectedCar]);
+
+            // Обработка кнопки "Назад" (BackButton)
+            React.useEffect(() => {
+                if (view === 'details') {
+                    tg.BackButton.show();
+                    tg.BackButton.onClick(() => setView('list'));
+                } else {
+                    tg.BackButton.hide();
+                }
+                return () => tg.BackButton.offClick();
+            }, [view]);
+
+            return (
+                <div className="pb-10">
+                    {view === 'list' && (
+                        <div className="p-4 fade-in">
+                            <h1 className="text-xl font-bold mb-4" style={{color: 'var(--tg-theme-text-color)'}}>Выберите авто</h1>
+                            <div className="space-y-4">
+                                {CARS.map(car => (
+                                    <div 
+                                        key={car.id}
+                                        onClick={() => { setSelectedCar(car); setView('details'); }}
+                                        className="bg-white rounded-xl overflow-hidden shadow-sm active:scale-95 transition-transform cursor-pointer"
+                                        style={{backgroundColor: 'var(--tg-theme-secondary-bg-color)'}}
+                                    >
+                                        <div className="h-40 w-full overflow-hidden">
+                                            <img src={car.img} alt={car.name} className="w-full h-full object-cover" />
+                                        </div>
+                                        <div className="p-3 flex justify-between items-center">
+                                            <span className="font-semibold" style={{color: 'var(--tg-theme-text-color)'}}>{car.name}</span>
+                                            <span className="text-blue-500 font-bold">{car.price} ₽</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {view === 'details' && selectedCar && (
+                        <div className="fade-in">
+                            <img src={selectedCar.img} alt={selectedCar.name} className="w-full h-64 object-cover" />
+                            <div className="p-5 bg-white rounded-t-3xl -mt-6 relative" style={{backgroundColor: 'var(--tg-theme-bg-color)'}}>
+                                <h1 className="text-2xl font-bold mb-2" style={{color: 'var(--tg-theme-text-color)'}}>{selectedCar.name}</h1>
+                                <p className="text-gray-500 mb-4">Комфортный автомобиль для поездок по городу и за его пределами. Включена страховка и полный бак.</p>
+                                
+                                <div className="bg-gray-100 p-4 rounded-xl mb-4" style={{backgroundColor: 'var(--tg-theme-secondary-bg-color)'}}>
+                                    <div className="flex justify-between text-sm mb-2">
+                                        <span style={{color: 'var(--tg-theme-hint-color)'}}>Цена за сутки</span>
+                                        <span className="font-bold" style={{color: 'var(--tg-theme-text-color)'}}>{selectedCar.price} ₽</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span style={{color: 'var(--tg-theme-hint-color)'}}>Залог</span>
+                                        <span className="font-bold" style={{color: 'var(--tg-theme-text-color)'}}>0 ₽</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
